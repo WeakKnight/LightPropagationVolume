@@ -1,0 +1,53 @@
+{
+  "metric": "sqrt(mean((LPV-RT)^2))/mean(RT), full uncropped unexposed linear RGB",
+  "target": 0.05,
+  "width": 640,
+  "height": 480,
+  "lpv_spp": 2048,
+  "reference_spp": 16384,
+  "transport": "directional",
+  "grid": 32,
+  "angular_resolution": 5,
+  "directions": 1154,
+  "source_angular_samples": 8,
+  "first_material_order": "ray-traced angular footprint average",
+  "steps_per_secondary_material_order": 40,
+  "material_orders": 3,
+  "decay": 1,
+  "read_bias": 0,
+  "indirect_strength": 1,
+  "cases": {
+    "default": {
+      "nrmse": 0.017922013998031616,
+      "passes": true,
+      "reference_noise_estimate": 0.005551813170313835,
+      "mean_lpv": 0.13480499386787415,
+      "mean_reference": 0.1349198818206787,
+      "lpv_cold_or_update_seconds": 21.79416783399938,
+      "geometry_builds": 1,
+      "direct_source_builds": 1
+    },
+    "side_view": {
+      "nrmse": 0.023040425032377243,
+      "passes": true,
+      "reference_noise_estimate": 0.007195734418928623,
+      "mean_lpv": 0.0640515387058258,
+      "mean_reference": 0.06403779238462448,
+      "lpv_cold_or_update_seconds": 13.892941792000784,
+      "geometry_builds": 1,
+      "direct_source_builds": 1
+    },
+    "sun_changed": {
+      "nrmse": 0.017309753224253654,
+      "passes": true,
+      "reference_noise_estimate": 0.004795883782207966,
+      "mean_lpv": 0.15562836825847626,
+      "mean_reference": 0.15569843351840973,
+      "lpv_cold_or_update_seconds": 20.124756291988888,
+      "geometry_builds": 1,
+      "direct_source_builds": 2
+    }
+  },
+  "baseline_sh_nrmse": 0.3002632260322571,
+  "all_cases_pass": true
+}

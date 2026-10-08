@@ -1,0 +1,118 @@
+{
+  "metric": "sqrt(mean((LPV-RT)^2))/mean(RT), full uncropped unexposed linear RGB",
+  "target": 0.05,
+  "width": 640,
+  "height": 480,
+  "lpv_spp": 2048,
+  "reference_spp": 16384,
+  "transport": "sh",
+  "grid": 32,
+  "angular_resolution": null,
+  "directions": 0,
+  "probe_visibility": "moments",
+  "visibility_bias": 0.25,
+  "distance_map_size": 16,
+  "distance_rays_per_probe": 512,
+  "irradiance_vertex_map_size": null,
+  "source_angular_samples": null,
+  "source_samples": 131072,
+  "first_material_order": "RT surface flux -> SH9",
+  "spatial_steps": 40,
+  "spatial_budget": "shared across material orders",
+  "material_orders": 3,
+  "decay": 0.95,
+  "read_bias": 0.0,
+  "indirect_strength": 1,
+  "reference_cache": "/Users/litianyu/Documents/GitHub/LightPropagationVolume/sample/output/accuracy-moments",
+  "cases": {
+    "default": {
+      "nrmse": 0.4975004196166992,
+      "passes": false,
+      "reference_noise_estimate": 0.005551813170313835,
+      "mean_lpv": 0.14063555002212524,
+      "mean_reference": 0.1349198818206787,
+      "lpv_cold_or_update_seconds": 1.2091749170067487,
+      "geometry_builds": 1,
+      "direct_source_builds": 1,
+      "volume_memory": {
+        "buffers_bytes": {
+          "sh.source": 3670016,
+          "sh.accumulated": 3670016,
+          "sh.front": 11010048,
+          "sh.next": 11010048,
+          "sh.links": 131072,
+          "sh.reflection": 22020096,
+          "sh.samples": 8388608,
+          "sh.ranges": 262144,
+          "distance.rays": 8192,
+          "distance.indices": 82944,
+          "distance.weights": 82944,
+          "distance.depths": 67108864,
+          "distance.moments": 84934656,
+          "distance.active": 131072
+        },
+        "total_bytes": 212510720
+      }
+    },
+    "side_view": {
+      "nrmse": 0.7466936707496643,
+      "passes": false,
+      "reference_noise_estimate": 0.007195734418928623,
+      "mean_lpv": 0.06851209700107574,
+      "mean_reference": 0.06403779238462448,
+      "lpv_cold_or_update_seconds": 0.49669920800079126,
+      "geometry_builds": 1,
+      "direct_source_builds": 1,
+      "volume_memory": {
+        "buffers_bytes": {
+          "sh.source": 3670016,
+          "sh.accumulated": 3670016,
+          "sh.front": 11010048,
+          "sh.next": 11010048,
+          "sh.links": 131072,
+          "sh.reflection": 22020096,
+          "sh.samples": 8388608,
+          "sh.ranges": 262144,
+          "distance.rays": 8192,
+          "distance.indices": 82944,
+          "distance.weights": 82944,
+          "distance.depths": 67108864,
+          "distance.moments": 84934656,
+          "distance.active": 131072
+        },
+        "total_bytes": 212510720
+      }
+    },
+    "sun_changed": {
+      "nrmse": 0.413147509098053,
+      "passes": false,
+      "reference_noise_estimate": 0.004795883782207966,
+      "mean_lpv": 0.1624249815940857,
+      "mean_reference": 0.15569843351840973,
+      "lpv_cold_or_update_seconds": 0.691097290997277,
+      "geometry_builds": 1,
+      "direct_source_builds": 2,
+      "volume_memory": {
+        "buffers_bytes": {
+          "sh.source": 3670016,
+          "sh.accumulated": 3670016,
+          "sh.front": 11010048,
+          "sh.next": 11010048,
+          "sh.links": 131072,
+          "sh.reflection": 22020096,
+          "sh.samples": 8388608,
+          "sh.ranges": 262144,
+          "distance.rays": 8192,
+          "distance.indices": 82944,
+          "distance.weights": 82944,
+          "distance.depths": 67108864,
+          "distance.moments": 84934656,
+          "distance.active": 131072
+        },
+        "total_bytes": 212510720
+      }
+    }
+  },
+  "baseline_sh_nrmse": 0.29821574687957764,
+  "all_cases_pass": false
+}

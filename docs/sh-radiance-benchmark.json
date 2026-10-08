@@ -1,0 +1,139 @@
+{
+  "backend": "metal",
+  "width": 640,
+  "height": 480,
+  "spp": 1,
+  "grid": 32,
+  "material_orders": 3,
+  "probe_visibility": "moments",
+  "trials": 11,
+  "note": "CPU wall clock + device.wait; render includes accumulation/tonemap, excludes UI/presentation. SH target updates alternate sunlight and recapture finite material orders; directional alternates 40/41 steps. Memory is GI buffer payload including retained depth scratch; excludes scene/images/runtime and CPU arrays.",
+  "cases": {
+    "directional": {
+      "cold_frame_seconds": 3.543174041013117,
+      "settle_seconds": 0.00019945899839513004,
+      "refinement_updates": 0,
+      "steady_render_ms": 0.597082995227538,
+      "update_ms": 1416.5752080007223,
+      "refinement_frame_ms": null,
+      "refinement_samples_ms": [],
+      "render_samples_ms": [
+        0.6113340059528127,
+        0.6044170004315674,
+        0.6240830116439611,
+        0.5823749961564317,
+        0.5887500010430813,
+        0.597082995227538,
+        0.5860829987796023,
+        0.6015839899191633,
+        0.5807089910376817,
+        0.6979169993428513,
+        0.5897079972783104
+      ],
+      "update_samples_ms": [
+        1420.521583990194,
+        1392.8238749940647,
+        1416.5752080007223,
+        1406.253666995326,
+        1426.1597500008065
+      ],
+      "decay": 1.0,
+      "volume_memory": {
+        "buffers_bytes": {
+          "sh.source": 3670016,
+          "sh.accumulated": 3670016,
+          "directional.offsets": 18464,
+          "directional.directions": 18464,
+          "directional.hits": 605028352,
+          "directional.material": 151257088,
+          "directional.direct": 605028352,
+          "directional.boundary": 605028352,
+          "directional.front": 605028352,
+          "directional.next": 605028352,
+          "directional.total": 16,
+          "directional.angular_samples": 147712,
+          "directional.irradiance_filter": 1666376,
+          "directional.previous_irradiance": 189267968,
+          "directional.total_irradiance": 189267968,
+          "distance.rays": 8192,
+          "distance.indices": 82944,
+          "distance.weights": 82944,
+          "distance.depths": 67108864,
+          "distance.moments": 84934656,
+          "distance.active": 131072
+        },
+        "total_bytes": 3716474520
+      },
+      "geometry_builds": 1,
+      "source_builds": 1,
+      "depth_builds": 1
+    },
+    "sh": {
+      "cold_frame_seconds": 1.1641875409986824,
+      "settle_seconds": 0.03151666698977351,
+      "refinement_updates": 160,
+      "steady_render_ms": 0.599917009822093,
+      "update_ms": 112.92024998692796,
+      "refinement_frame_ms": 0.9292920003645122,
+      "refinement_samples_ms": [
+        0.9949999948730692,
+        1.0106669942615554,
+        0.9399170085089281,
+        0.9292920003645122,
+        0.8386670087929815,
+        0.8684589993208647,
+        1.1220830056117848,
+        0.9174580045510083,
+        0.9331670007668436,
+        0.9231250005541369,
+        0.9215000027325004
+      ],
+      "render_samples_ms": [
+        0.6647499976679683,
+        0.6034999969415367,
+        0.6377079989761114,
+        0.7185420108726248,
+        0.6438330019591376,
+        0.599917009822093,
+        0.5930000043008476,
+        0.5864580016350374,
+        0.5822919920319691,
+        0.588916998822242,
+        0.5871250032214448
+      ],
+      "update_samples_ms": [
+        112.92024998692796,
+        113.39549999684095,
+        111.75045800337102,
+        114.28962499485351,
+        112.48587499721907
+      ],
+      "decay": 1.0,
+      "volume_memory": {
+        "buffers_bytes": {
+          "sh.source": 3670016,
+          "sh.accumulated": 3670016,
+          "sh.front": 11010048,
+          "sh.next": 11010048,
+          "sh.captured": 11010048,
+          "sh.target": 11010048,
+          "geometry.geometry": 1149984,
+          "geometry.samples": 8388608,
+          "geometry.ranges": 287496,
+          "geometry.rays": 16384,
+          "distance.rays": 8192,
+          "distance.indices": 82944,
+          "distance.weights": 82944,
+          "distance.depths": 67108864,
+          "distance.moments": 84934656,
+          "distance.active": 131072
+        },
+        "total_bytes": 213571368
+      },
+      "geometry_builds": 1,
+      "source_builds": 6,
+      "depth_builds": 1
+    }
+  },
+  "memory_reduction_vs_current_directional": 17.401557871746178
+}

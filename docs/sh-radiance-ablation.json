@@ -1,0 +1,76 @@
+{
+  "metric": "full linear RGB NRMSE / mean(RT)",
+  "width": 640,
+  "height": 480,
+  "lpv_spp": 2048,
+  "reference_spp": 16384,
+  "reference_material_orders": 3,
+  "cases": {
+    "full": {
+      "nrmse": 0.026405397802591324,
+      "mean_rgb": 0.1349128782749176,
+      "refinement_updates": 160,
+      "seconds": 0.9637445410044165,
+      "geometry_occlusion": true,
+      "temporal_refinement": true,
+      "material_orders": 3,
+      "reference_note": "one_material_order still compares to 3-order RT to quantify omitted secondary energy"
+    },
+    "no_geometry_occlusion": {
+      "nrmse": 0.026366418227553368,
+      "mean_rgb": 0.13491198420524597,
+      "refinement_updates": 160,
+      "seconds": 0.8473129170015454,
+      "geometry_occlusion": false,
+      "temporal_refinement": true,
+      "material_orders": 3,
+      "reference_note": "one_material_order still compares to 3-order RT to quantify omitted secondary energy"
+    },
+    "no_temporal_refinement": {
+      "nrmse": 0.02640538290143013,
+      "mean_rgb": 0.13491290807724,
+      "refinement_updates": 1,
+      "seconds": 0.8138856249861419,
+      "geometry_occlusion": true,
+      "temporal_refinement": false,
+      "material_orders": 3,
+      "reference_note": "one_material_order still compares to 3-order RT to quantify omitted secondary energy"
+    },
+    "one_material_order": {
+      "nrmse": 0.13248826563358307,
+      "mean_rgb": 0.12208319455385208,
+      "refinement_updates": 160,
+      "seconds": 0.7387637920037378,
+      "geometry_occlusion": true,
+      "temporal_refinement": true,
+      "material_orders": 1,
+      "reference_note": "one_material_order still compares to 3-order RT to quantify omitted secondary energy"
+    }
+  },
+  "temporal_profile": [
+    {
+      "update": 1,
+      "relative_sh_l2_to_settled": 0.8999999761581421
+    },
+    {
+      "update": 8,
+      "relative_sh_l2_to_settled": 0.430466890335083
+    },
+    {
+      "update": 32,
+      "relative_sh_l2_to_settled": 0.03433644399046898
+    },
+    {
+      "update": 64,
+      "relative_sh_l2_to_settled": 0.001178631791844964
+    },
+    {
+      "update": 128,
+      "relative_sh_l2_to_settled": 1.013315568343387e-06
+    },
+    {
+      "update": 160,
+      "relative_sh_l2_to_settled": 0.0
+    }
+  ]
+}

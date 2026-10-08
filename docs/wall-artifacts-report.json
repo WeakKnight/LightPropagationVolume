@@ -1,0 +1,93 @@
+{
+  "note": "Fixed wall/ceiling patch diagnostic; full-frame RGB gate remains unchanged. Brightness is mean(R,G,B). Residual is image-reference. A fixed 9x9 box mean is applied only to residual measurements, then std is divided by patch reference mean. Lower residual std means less spatially varying error, not necessarily less physical GI variation.",
+  "before_file": "sample/output/accuracy-final/default-lpv.npy",
+  "after_file": "sample/output/accuracy-footprints/default-lpv.npy",
+  "reference_file": "sample/output/accuracy-footprints/default-reference.npy",
+  "before": {
+    "full_frame_nrmse": 0.02764623425900936,
+    "patches": {
+      "red_wall": {
+        "xyxy": [
+          20,
+          140,
+          110,
+          300
+        ],
+        "mean_reference_rgb": 0.02443586476147175,
+        "normalized_brightness_rmse": 0.05556284636259079,
+        "normalized_mean_error": 0.022369418293237686,
+        "normalized_residual_std_9x9": 0.04616060140467312
+      },
+      "back_wall": {
+        "xyxy": [
+          190,
+          140,
+          230,
+          235
+        ],
+        "mean_reference_rgb": 0.019631870090961456,
+        "normalized_brightness_rmse": 0.06681440770626068,
+        "normalized_mean_error": -0.0004552081227302551,
+        "normalized_residual_std_9x9": 0.05734148507571658
+      },
+      "ceiling": {
+        "xyxy": [
+          410,
+          20,
+          460,
+          60
+        ],
+        "mean_reference_rgb": 0.09391891211271286,
+        "normalized_brightness_rmse": 0.053586192429065704,
+        "normalized_mean_error": -0.03192885220050812,
+        "normalized_residual_std_9x9": 0.030462284588820693
+      }
+    }
+  },
+  "after": {
+    "full_frame_nrmse": 0.017922013998031616,
+    "patches": {
+      "red_wall": {
+        "xyxy": [
+          20,
+          140,
+          110,
+          300
+        ],
+        "mean_reference_rgb": 0.02443586476147175,
+        "normalized_brightness_rmse": 0.02697400562465191,
+        "normalized_mean_error": 0.017178144305944443,
+        "normalized_residual_std_9x9": 0.011386641682348948
+      },
+      "back_wall": {
+        "xyxy": [
+          190,
+          140,
+          230,
+          235
+        ],
+        "mean_reference_rgb": 0.019631870090961456,
+        "normalized_brightness_rmse": 0.03235376253724098,
+        "normalized_mean_error": -0.002423010068014264,
+        "normalized_residual_std_9x9": 0.018464630979740035
+      },
+      "ceiling": {
+        "xyxy": [
+          410,
+          20,
+          460,
+          60
+        ],
+        "mean_reference_rgb": 0.09391891211271286,
+        "normalized_brightness_rmse": 0.017869941890239716,
+        "normalized_mean_error": 0.0025361718144267797,
+        "normalized_residual_std_9x9": 0.011231207427207726
+      }
+    }
+  },
+  "residual_std_reduction": {
+    "red_wall": 0.7533255344200042,
+    "back_wall": 0.6779882670398507,
+    "ceiling": 0.6313077768523819
+  }
+}

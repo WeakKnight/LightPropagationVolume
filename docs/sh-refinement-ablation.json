@@ -1,0 +1,80 @@
+{
+  "metric": "full linear RGB NRMSE / mean(RT)",
+  "width": 640,
+  "height": 480,
+  "lpv_spp": 2048,
+  "reference_spp": 16384,
+  "reference_material_orders": 3,
+  "cases": {
+    "full": {
+      "nrmse": 0.3041428327560425,
+      "mean_rgb": 0.11031979322433472,
+      "refinement_updates": 416,
+      "seconds": 1.1819932500075083,
+      "geometry_occlusion": true,
+      "temporal_refinement": true,
+      "material_orders": 3,
+      "reference_note": "one_material_order still compares to 3-order RT to quantify omitted secondary energy"
+    },
+    "no_geometry_occlusion": {
+      "nrmse": 0.2962372601032257,
+      "mean_rgb": 0.11160150915384293,
+      "refinement_updates": 448,
+      "seconds": 1.5094740000058664,
+      "geometry_occlusion": false,
+      "temporal_refinement": true,
+      "material_orders": 3,
+      "reference_note": "one_material_order still compares to 3-order RT to quantify omitted secondary energy"
+    },
+    "no_temporal_refinement": {
+      "nrmse": 0.3463967442512512,
+      "mean_rgb": 0.10323567688465118,
+      "refinement_updates": 1,
+      "seconds": 0.698130749995471,
+      "geometry_occlusion": true,
+      "temporal_refinement": false,
+      "material_orders": 3,
+      "reference_note": "one_material_order still compares to 3-order RT to quantify omitted secondary energy"
+    },
+    "one_material_order": {
+      "nrmse": 0.3044757544994354,
+      "mean_rgb": 0.11026386171579361,
+      "refinement_updates": 416,
+      "seconds": 0.953637083992362,
+      "geometry_occlusion": true,
+      "temporal_refinement": true,
+      "material_orders": 1,
+      "reference_note": "one_material_order still compares to 3-order RT to quantify omitted secondary energy"
+    }
+  },
+  "temporal_profile": [
+    {
+      "update": 1,
+      "relative_sh_l2_to_settled": 0.9287309050559998
+    },
+    {
+      "update": 8,
+      "relative_sh_l2_to_settled": 0.5954428911209106
+    },
+    {
+      "update": 32,
+      "relative_sh_l2_to_settled": 0.2185157835483551
+    },
+    {
+      "update": 64,
+      "relative_sh_l2_to_settled": 0.07490979135036469
+    },
+    {
+      "update": 128,
+      "relative_sh_l2_to_settled": 0.011160367168486118
+    },
+    {
+      "update": 256,
+      "relative_sh_l2_to_settled": 0.0004605163703672588
+    },
+    {
+      "update": 416,
+      "relative_sh_l2_to_settled": 0.0
+    }
+  ]
+}

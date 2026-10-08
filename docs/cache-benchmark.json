@@ -1,0 +1,12 @@
+{
+  "previous_invalidation": {
+    "injection_bias": 26.134166000701953,
+    "steps": 2.582041001005564,
+    "sun_intensity": 2.479583003150765
+  },
+  "split_cache": {
+    "injection_bias": 15.911959002551157,
+    "steps": 1.4012079991516657,
+    "sun_intensity": 2.4427499956800602
+  }
+}

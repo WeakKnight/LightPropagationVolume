@@ -1,0 +1,122 @@
+{
+  "backend": "metal",
+  "width": 640,
+  "height": 480,
+  "spp": 1,
+  "grid": 32,
+  "material_orders": 3,
+  "probe_visibility": "moments",
+  "trials": 11,
+  "note": "CPU wall clock + device.wait; render includes accumulation/tonemap, excludes UI/presentation. SH updates measure one refinement frame after an occlusion-strength change; directional alternates 40/41 steps. Memory is GI buffer payload including retained depth scratch; excludes scene/images/runtime and CPU arrays.",
+  "cases": {
+    "directional": {
+      "cold_frame_seconds": 3.6037824579980224,
+      "settle_seconds": 0.0002181250019930303,
+      "refinement_updates": 0,
+      "steady_render_ms": 0.5955830129096285,
+      "update_ms": 1420.682541996939,
+      "render_samples_ms": [
+        0.591959003941156,
+        0.5978330009384081,
+        0.5835420015500858,
+        0.6032080127624795,
+        0.5837089993292466,
+        0.8094999939203262,
+        0.6463329918915406,
+        0.5955830129096285,
+        0.5689169920515269,
+        0.5820829974254593,
+        0.6127500091679394
+      ],
+      "update_samples_ms": [
+        1420.682541996939,
+        1399.8547079972923,
+        1425.0540000066394,
+        1399.385541997617,
+        1422.3619589902228
+      ],
+      "decay": 1.0,
+      "volume_memory": {
+        "buffers_bytes": {
+          "sh.source": 3670016,
+          "sh.accumulated": 3670016,
+          "directional.offsets": 18464,
+          "directional.directions": 18464,
+          "directional.hits": 605028352,
+          "directional.material": 151257088,
+          "directional.direct": 605028352,
+          "directional.boundary": 605028352,
+          "directional.front": 605028352,
+          "directional.next": 605028352,
+          "directional.total": 16,
+          "directional.angular_samples": 147712,
+          "directional.irradiance_filter": 1666376,
+          "directional.previous_irradiance": 189267968,
+          "directional.total_irradiance": 189267968,
+          "distance.rays": 8192,
+          "distance.indices": 82944,
+          "distance.weights": 82944,
+          "distance.depths": 67108864,
+          "distance.moments": 84934656,
+          "distance.active": 131072
+        },
+        "total_bytes": 3716474520
+      },
+      "geometry_builds": 1,
+      "source_builds": 1,
+      "depth_builds": 1
+    },
+    "sh": {
+      "cold_frame_seconds": 0.8040536250045989,
+      "settle_seconds": 0.7501244579907507,
+      "refinement_updates": 416,
+      "steady_render_ms": 0.628709007287398,
+      "update_ms": 2.3767910024616867,
+      "render_samples_ms": [
+        0.6493749970104545,
+        0.6241250084713101,
+        0.6410420028259978,
+        0.6400839920388535,
+        0.6252500024857,
+        0.628709007287398,
+        0.6206249963724986,
+        0.6255830085137859,
+        0.6467079947469756,
+        0.6137080054031685,
+        0.6348330061882734
+      ],
+      "update_samples_ms": [
+        2.372707996983081,
+        2.402999991318211,
+        2.7205829974263906,
+        2.3767910024616867,
+        2.3747079976601526
+      ],
+      "decay": 1.0,
+      "volume_memory": {
+        "buffers_bytes": {
+          "sh.source": 3670016,
+          "sh.accumulated": 3670016,
+          "sh.front": 11010048,
+          "sh.next": 11010048,
+          "sh.samples": 8388608,
+          "sh.ranges": 262144,
+          "geometry.geometry": 1149984,
+          "geometry.samples": 8388608,
+          "geometry.ranges": 287496,
+          "distance.rays": 8192,
+          "distance.indices": 82944,
+          "distance.weights": 82944,
+          "distance.depths": 67108864,
+          "distance.moments": 84934656,
+          "distance.active": 131072
+        },
+        "total_bytes": 200185640
+      },
+      "geometry_builds": 1,
+      "source_builds": 1,
+      "depth_builds": 1
+    }
+  },
+  "memory_reduction_vs_current_directional": 18.565140436646704
+}

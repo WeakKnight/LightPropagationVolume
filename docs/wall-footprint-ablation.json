@@ -1,0 +1,28 @@
+{
+  "width": 640,
+  "height": 480,
+  "lpv_spp": 512,
+  "reference_spp": 16384,
+  "metric": "full uncropped linear RGB NRMSE / mean reference",
+  "note": "Both 1 and 8 samples use full first-flight RT; timings mix cold/update work with image convergence, not an isolated performance benchmark.",
+  "cases": [
+    {
+      "samples": 1,
+      "nrmse": 0.027661927044391632,
+      "mean": 0.1349991112947464,
+      "seconds": 8.347220667012152
+    },
+    {
+      "samples": 4,
+      "nrmse": 0.018649132922291756,
+      "mean": 0.1348249316215515,
+      "seconds": 6.979523333997349
+    },
+    {
+      "samples": 8,
+      "nrmse": 0.01834941655397415,
+      "mean": 0.13480406999588013,
+      "seconds": 7.059065291992738
+    }
+  ]
+}

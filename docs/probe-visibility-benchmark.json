@@ -1,0 +1,75 @@
+{
+  "backend": "metal",
+  "width": 640,
+  "height": 480,
+  "spp": 1,
+  "grid": 32,
+  "directions": 1154,
+  "material_orders": 3,
+  "source_angular_samples": 8,
+  "trials": 11,
+  "distance_map_size": 16,
+  "distance_rays": 512,
+  "irradiance_vertex_map_size": 17,
+  "visibility_bias": 0.25,
+  "initial_moments_frame_seconds": 3.696254125010455,
+  "note": "CPU wall clock + device.wait; includes rendering/accumulation/tonemap, not isolated shader GPU timestamps. Steady render excludes volume build; reinjection timings alternate steps 40/41, reuse geometry/direct source. Each stage uses the same scene and camera; no other GPU benchmark runs concurrently.",
+  "cases": {
+    "ray": {
+      "steady_render_ms": 9.064666999620385,
+      "secondary_update_ms": 2374.982209003065,
+      "render_samples_ms": [
+        9.587541993823834,
+        8.936958998674527,
+        8.765833001234569,
+        9.064666999620385,
+        9.121041992329992,
+        9.16862499434501,
+        9.162917005596682,
+        9.542542000417598,
+        8.789333995082416,
+        8.836791996145621,
+        8.919583007809706
+      ],
+      "secondary_update_samples_ms": [
+        2374.982209003065,
+        2343.1153329875087,
+        2393.3998339925893,
+        2345.1244169991696,
+        2376.9527090043994
+      ],
+      "depth_builds": 1,
+      "geometry_builds": 1,
+      "source_builds": 1
+    },
+    "moments": {
+      "steady_render_ms": 0.621291997958906,
+      "secondary_update_ms": 1458.1495419988642,
+      "render_samples_ms": [
+        0.6617079925490543,
+        0.7062500080792233,
+        0.6223329983185977,
+        0.6267080025281757,
+        0.617874989984557,
+        0.6157500029075891,
+        0.6372499919962138,
+        0.621291997958906,
+        0.5974590021651238,
+        0.6087920046411455,
+        0.5960409907856956
+      ],
+      "secondary_update_samples_ms": [
+        1472.2566249984084,
+        1436.6574160085293,
+        1458.6868330079596,
+        1452.3362500040093,
+        1458.1495419988642
+      ],
+      "depth_builds": 1,
+      "geometry_builds": 1,
+      "source_builds": 1
+    }
+  },
+  "steady_render_speedup": 14.590026958982254,
+  "secondary_update_speedup": 1.628764499522721
+}
