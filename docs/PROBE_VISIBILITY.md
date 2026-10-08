@@ -1,44 +1,44 @@
-# 距离矩与 Chebyshev 探针可见性
+# Distance moments and Chebyshev probe visibility
 
-> 当前默认已修正为 RT 引导的紧凑 SH9 光场；本页保留此前核的历史记录，最新分析与低误差验收见 [SH_RADIANCE.md](SH_RADIANCE.md)。
+> The current default has been corrected to an RT-guided compact SH9 field. This page preserves the earlier kernel's history; see [SH_RADIANCE.md](SH_RADIANCE.md) for the latest analysis and low-error acceptance results.
 
-> 当前默认已升级为 GV + 26 邻域 + 时间 refinement；本页为此前核/预设的记录，最新评估见 [SH_REFINEMENT.md](SH_REFINEMENT.md)。
+> The default was subsequently upgraded to GV + 26 neighbors + temporal refinement. This page records the preceding kernel / preset; see [SH_REFINEMENT.md](SH_REFINEMENT.md) for that evaluation.
 
-> 2026-10-05 更新：本文的达标数值和方向图消费描述属于 `--transport directional`。当前默认为紧凑 SH LPV，其内存、性能和明显的画质退步见 [COMPACT_LPV.md](COMPACT_LPV.md)。方向模式的累计角度缓存现已按需分配。
+> 2026-10-05 update: the passing results and directional-map consumption described here apply to `--transport directional`. The default at that stage became compact SH LPV; see [COMPACT_LPV.md](COMPACT_LPV.md) for its memory, performance, and substantial quality regression. The accumulated angular cache in directional mode is now allocated on demand.
 
-2026-10-05，参考本机 `Downloads/RTXGI-DDGI-main/rtxgi-sdk` 的以下源码：
+2026-10-05. This implementation references the following local sources in `Downloads/RTXGI-DDGI-main/rtxgi-sdk`:
 
-- `shaders/ddgi/ProbeBlendingCS.hlsl`：距离及距离平方的角度过滤、`cos^probeDistanceExponent`、局部距离上限。
-- `shaders/ddgi/Irradiance.hlsl`：Chebyshev 权重、三次方压漏光、wrap-normal 权重、弱权重压缩及八探针归一化。
-- `shaders/ddgi/include/ProbeOctahedral.hlsl`：球面方向的八面体编码。
-- `shaders/ddgi/ProbeClassificationCS.hlsl`：背面命中比例用于排除实体内的探针。
+- `shaders/ddgi/ProbeBlendingCS.hlsl`: angular filtering of distance and squared distance, `cos^probeDistanceExponent`, and local distance limits.
+- `shaders/ddgi/Irradiance.hlsl`: Chebyshev weights, cubing to suppress light leaks, wrap-normal weights, low-weight compression, and eight-probe normalization.
+- `shaders/ddgi/include/ProbeOctahedral.hlsl`: octahedral encoding of spherical directions.
+- `shaders/ddgi/ProbeClassificationCS.hlsl`: excluding probes inside solids using the backface-hit fraction.
 
-源码位置可从 [NVIDIA RTXGI-DDGI](https://github.com/NVIDIAGameWorks/RTXGI-DDGI/tree/main/rtxgi-sdk/shaders/ddgi) 核对。
-这是本项目的独立实现，采用上述算法结构；没有搬入 SDK 或 UE 插件。
+Source locations can be checked in [NVIDIA RTXGI-DDGI](https://github.com/NVIDIAGameWorks/RTXGI-DDGI/tree/main/rtxgi-sdk/shaders/ddgi).
+This is an independent implementation of those algorithmic structures; neither the SDK nor the UE plugin was imported.
 
-## 距离矩图
+## Distance-moment maps
 
-每个探针生成 512 条固定 Fibonacci 方向的几何射线，仅在场景/网格改变时更新。
-距离截断为 `1.5*sqrt(3)*cell_size`，与 SDK 的 `1.5*length(probeSpacing)` 一致。
-未命中的方向存上限；背面命中用负距离编码，过滤距离时取绝对值。
-超过 25% 的射线命中三角形背面的探针禁用，防止实体内探针参与插值。没有实现 probe relocation。
-这依赖闭合物体正确的三角形朝向；开放/双面网格有固有歧义。
+Each probe traces 512 fixed Fibonacci geometry rays, updated only when the scene or grid changes.
+Distances are clamped to `1.5*sqrt(3)*cell_size`, matching the SDK's `1.5*length(probeSpacing)`.
+Misses store the limit. Backface hits encode negative distance; filtering uses the absolute value.
+Probes with more than 25% backface hits are disabled to keep probes inside solids out of interpolation. Probe relocation is not implemented.
+This requires correctly oriented triangles on closed objects; open / two-sided meshes are inherently ambiguous.
 
-对每个 16×16 八面体 texel，以 `max(dot(texel_direction,ray_direction),0)^50` 过滤：
+For each 16×16 octahedral texel, filter with `max(dot(texel_direction,ray_direction),0)^50`:
 
 \[
 \mu=\frac{\sum_j w_jd_j}{\sum_jw_j},\qquad
 m_2=\frac{\sum_jw_jd_j^2}{\sum_jw_j}.
 \]
 
-预计算每个 texel 最邻近的 64 条射线及归一化过滤权重，略去 cos^50 的极小尾部。
-距离矩存 float2，包含镜像的单 texel 边框，共 18×18 texel/探针；查询手动做四点双线性采样。
-这在逻辑上是每探针的八面体 depth/moment map，使用线性 buffer 保存图块，不是相机屏幕 depth buffer。
-本实现存完整的均值和二阶矩；SDK 的 0.5 存储/2.0 解码约定不需要照搬。
+The 64 nearest rays and normalized filter weights are precomputed for each texel, omitting the tiny cos^50 tail.
+Distance moments are float2 values with a mirrored one-texel border, totaling 18×18 texels per probe. Queries perform manual four-point bilinear sampling.
+Logically, this is a per-probe octahedral depth/moment map, stored as tiles in a linear buffer, not the camera's screen-space depth buffer.
+This implementation stores the full mean and second moment; the SDK's 0.5 storage / 2.0 decode convention need not be copied.
 
-## 可见性权重
+## Visibility weights
 
-从探针指向待着色点，查询该方向的两个距离矩。令查询距离为 t：
+Query both distance moments in the direction from the probe to the shading point. Let the query distance be t:
 
 \[
 \sigma^2=\max(m_2-\mu^2,0),\qquad
@@ -47,95 +47,95 @@ P=\begin{cases}1,&t\le\mu,\\
 \end{cases}
 \]
 
-这是单侧 Chebyshev/Cantelli 上界，作为近似可见性权重使用，不是精确遮挡证明。
-遵循 SDK：使用 `P³` 增强遮挡对比；与 `(wrap²+0.2)` 相乘，保留 0.05 的可见性下限，
-对小于 0.2 的权重再连续压缩，然后乘三线性权重，最后归一化八个探针。
-方差的微小负数截为零，避免浮点误差产生负概率。
+This is the one-sided Chebyshev/Cantelli upper bound, used as an approximate visibility weight, not an exact occlusion proof.
+Following the SDK, use `P³` to increase occlusion contrast, multiply by `(wrap²+0.2)`, retain a visibility floor of 0.05,
+continuously compress weights below 0.2, then multiply by trilinear weights and normalize across eight probes.
+Tiny negative variances are clamped to zero to prevent negative probabilities from floating-point error.
 
-仅用于距离矩查询的点沿几何法线偏移 0.25 cell，另加原有 ray epsilon。
-`--visibility-bias` 控制这个偏移；它不改变插值网格坐标、irradiance 查询法线或光照采样位置。
-`--read-bias` 仍为 0，是另一个控制插值位置的参数。
-矩过滤会让平面距离均值稍大；薄墙情况下，过小的可见性偏移容易把墙另一侧误判为可见。
-默认偏移通过 1 mm 薄墙回归检查，不根据 reference 图像拟合。
+The point used only for distance-moment queries is offset along the geometric normal by 0.25 cell, plus the existing ray epsilon.
+`--visibility-bias` controls this offset; it does not change interpolation coordinates, the irradiance-query normal, or the lighting-sample position.
+`--read-bias` remains 0 and separately controls the interpolation position.
+Moment filtering makes the mean distance to a plane slightly larger; too small a visibility bias can incorrectly classify the opposite side of a thin wall as visible.
+The default bias passes a 1 mm thin-wall regression test and is not fitted to reference images.
 
-最终着色和次级材质反射共用 `sample/shaders/probe_visibility.slang`。
-在默认 moments 路径，这两处不再发射八邻域的短可见性射线。
-相机首命中、太阳阴影、光照注入及静态几何缓存仍使用 RT。
+Final shading and secondary material-reflection queries share `sample/shaders/probe_visibility.slang`.
+The default moments path no longer traces eight-neighbor short visibility rays at either location.
+Camera first hits, sunlight shadows, lighting injection, and static geometry caches still use RT.
 
-## 同时缓存 irradiance
+## Caching irradiance as well
 
-仅换 Chebyshev 查询仍会在每个消费点循环积分 1154 个方向，并且软可见性会让更多探针参与。
-本机初测“距离矩 + 现场方向积分”略慢，因此按 DDGI 的消费结构进一步缓存 irradiance：
+Replacing visibility alone with Chebyshev still requires integrating 1154 directions at every query, and soft visibility admits more probes.
+Initial local measurements found distance moments plus on-demand directional integration slightly slower, so irradiance is also cached following DDGI's consumption structure:
 
-- 每个材质阶数完成后，把方向 radiance 余弦积分成一个法线方向图。
-- 当前阶 irradiance 图供下一次反射查询；另一个图只累加各材质阶数一次，供最终着色。
-- 最终/次级查询只读取距离矩和法线方向的 irradiance，再做八探针加权。
+- After each material order completes, cosine-integrate angular radiance into a map indexed by normal direction.
+- The current-order irradiance map serves the next reflection query. Another map accumulates each material order exactly once for final shading.
+- Final and secondary queries read only distance moments and irradiance in the normal direction, then weight eight probes.
 
-irradiance 为线性 RGB float4，采用 17×17 八面体**顶点**采样，包含边框共 19×19。
-17 是奇数且包含边界与中心，六个坐标轴法线都精确落在采样点上。
-这防止普通偶数、texel-center 图在法线插值时把略倾斜法线的辐照度混入平面法线，产生错误自照明。
-其他法线做双线性近似；均匀 radiance 保持 `E=pi*L`。
-这部分改变消费/反射的缓存表示，保留 1154 方向的空气输运和材质阶数分解，未改为 SH 空间扩散。
+Irradiance is linear RGB float4, using 17×17 octahedral **vertex** samples, or 19×19 including borders.
+The odd size 17 includes the boundaries and center, placing all six axis-aligned normals exactly on samples.
+This prevents ordinary even-sized, texel-centered maps from mixing irradiance at slightly tilted normals into planar normals and producing false self-lighting.
+Other normals use bilinear approximation; uniform radiance preserves `E=pi*L`.
+This changes the cache representation for consumption / reflection, retaining 1154-direction air transport and material-order decomposition. It does not introduce SH spatial diffusion.
 
-32³ 默认新增距离矩约 85 MB、距离射线 scratch 约 67 MB、两张 irradiance 图合计约 379 MB。
-总计约增加 0.53 GB；主体角度缓存仍约 3.8 GB，另有 SH 诊断及运行库。
-距离矩不因相机、光源、反射次数、角度密度或可见性偏移改变而重建。
-irradiance 图随光场更新；移动相机时直接复用。
+At the default 32³, new distance moments occupy about 85 MB, distance-ray scratch about 67 MB, and the two irradiance maps about 379 MB in total.
+The increase is approximately 0.53 GB. The main angular cache is still about 3.8 GB, with additional diagnostic SH and runtime memory.
+Distance moments are not rebuilt for camera, lighting, reflection-count, angular-density, or visibility-bias changes.
+Irradiance maps update with the field and are reused directly when the camera moves.
 
-## 运行与对照
+## Running and comparisons
 
 ```bash
-./run_local.sh                              # moments 默认路径
-./run_local.sh --probe-visibility ray       # 旧的精确短射线 + 现场角度积分
-./run_local.sh --probe-visibility none      # 无过滤的诊断对照
+./run_local.sh                              # Default moments path at this stage
+./run_local.sh --probe-visibility ray       # Old exact short rays + on-demand angular integration
+./run_local.sh --probe-visibility none      # Unfiltered diagnostic comparison
 ./run_local.sh --visibility-bias .25
 ./run_local.sh --benchmark-visibility
 ./run_local.sh --accuracy --extra-cases
 ./run_local.sh --test --backend metal --debug
 ```
 
-源码：`sample/probe_visibility.py`、`sample/shaders/probe_distance.slang`、`probe_visibility.slang`，
-以及 `directional.slang` 的 `irradiance_main`。
-经典 `--transport sh` 保留原有路径；此修改适用于默认 directional 体积。
+Sources: `sample/probe_visibility.py`, `sample/shaders/probe_distance.slang`, `probe_visibility.slang`,
+and `irradiance_main` in `directional.slang`.
+The classic `--transport sh` path was retained; this change applied to the directional volume that was the default at this stage.
 
-## 验证结果
+## Validation results
 
-29 项 CPU/GPU 检查通过，包括：Chebyshev 的解析概率、两个距离矩/方差、八面体接缝、
-六个轴向法线的 irradiance 与原角度积分一致、均匀 radiance、平面无自照明/反弹、
-1 mm 薄墙两侧明暗探针、黑色吸收、关灯、材质反射序列和模式切换。
-薄墙测试人为设置墙下所有探针亮、墙上探针黑；无过滤时明显漏光，ray 对照为零，moments 最大线性 RGB 小于 0.001。
-这不是任意薄几何和任意探针布局下的零漏光保证。
+29 CPU/GPU checks pass, covering analytic Chebyshev probabilities, both distance moments / variance, octahedral seams,
+axis-normal irradiance matching the original angular integration, uniform radiance, no planar self-lighting / bounce,
+bright and dark probes across a 1 mm thin wall, black absorption, lights off, material-reflection series, and mode switching.
+The thin-wall test makes every probe below the wall bright and every probe above it black. Unfiltered sampling leaks visibly, the ray comparison is zero, and moments produces maximum linear RGB below 0.001.
+This does not guarantee zero leakage for arbitrary thin geometry or probe layouts.
 
-性能用 640×480 / 1 spp / 32³ / 1154 方向 / 三个材质阶数，编译与预热后测试：
+Performance uses 640×480 / 1 spp / 32³ / 1154 directions / three material orders, after compilation and warmup:
 
-| 项目 | 原 ray + 现场积分 | moments + 缓存 irradiance |
+| Operation | Old rays + on-demand integration | Moments + cached irradiance |
 | --- | ---: | ---: |
-| 稳定离屏 render，中位数 11 次 | 9.06 ms | 0.62 ms |
-| 次级反射/传播更新，中位数 5 次 | 2.37 s | 1.46 s |
+| Steady offscreen render, median of 11 | 9.06 ms | 0.62 ms |
+| Secondary reflection / propagation update, median of 5 | 2.37 s | 1.46 s |
 
-计时用 CPU wall clock 加 `device.wait()`，包括 render、累积、tone mapping；不含窗口/UI/呈现。
-更新测试在 40/41 空间步间切换，保持几何、距离矩和直接光源缓存；没有同时运行其他 GPU 任务。
-14.6 倍的消费收益来自**距离矩查询加缓存 irradiance 的整套替换**，不能归因于单独的 Chebyshev 算术。
-性能报告见 [probe-visibility-benchmark.json](probe-visibility-benchmark.json)。
+Timings use CPU wall clock plus `device.wait()`, including rendering, accumulation, and tone mapping, but excluding the window/UI/presentation.
+Update tests alternate 40/41 spatial steps while retaining geometry, distance moments, and direct-source caches. No other GPU task ran concurrently.
+The 14.6-fold consumption improvement comes from **distance-moment queries together with cached irradiance**, not Chebyshev arithmetic alone.
+Performance report: [probe-visibility-benchmark.json](probe-visibility-benchmark.json).
 
-质量保持原来的完整 640×480 线性 RGB 口径，LPV 2048 spp / RT 16384 spp：
+Quality retains the original full 640×480 linear-RGB metric, LPV 2048 spp / RT 16384 spp:
 
-| 案例 | 旧 ray + 现场积分 | 新 moments + 缓存 irradiance |
+| Case | Old rays + on-demand integration | New moments + cached irradiance |
 | --- | ---: | ---: |
-| 默认视角 | 1.79% | 2.54% |
-| 侧视角 | 2.30% | 3.30% |
-| 换太阳方向 | 1.73% | 2.15% |
+| Default view | 1.79% | 2.54% |
+| Side view | 2.30% | 3.30% |
+| Changed sun direction | 1.73% | 2.15% |
 
-三个案例仍低于 5%，但新近似的误差比精确 ray 消费大。reference 数组前后逐值一致。
-完整报告见 [accuracy-report.json](accuracy-report.json)。
+All three cases remain below 5%, but the new approximation has more error than exact-ray consumption. Reference arrays are bit-identical before and after.
+Full report: [accuracy-report.json](accuracy-report.json).
 
-![旧 ray / 新 moments / independent RT](probe-visibility-comparison.png)
+![Old rays / new moments / independent RT](probe-visibility-comparison.png)
 
-固定红墙/后墙/天花板的低频残差标准差，由 1.14% / 1.85% / 1.12%
-变为 1.17% / 1.89% / 1.13%，维持前一轮角度抗混叠后的平滑度，略有误差增加。
-测量口径与完整数据见 [probe-visibility-wall-report.json](probe-visibility-wall-report.json)。
-窗口三帧呈现检查通过。
+Low-frequency residual standard deviations in the fixed red-wall / back-wall / ceiling regions change from 1.14% / 1.85% / 1.12%
+to 1.17% / 1.89% / 1.13%, retaining the smoothness achieved by the preceding angular-antialiasing change with a slight error increase.
+See [probe-visibility-wall-report.json](probe-visibility-wall-report.json) for the metric and complete data.
+The three-frame window presentation check passes.
 
-有限角度矩图、irradiance 插值、表面偏移及软权重会带来近似误差。
-Chebyshev 是上界，全部候选探针都被遮挡时的归一化 fallback 仍可能漏光。
-保留 ray 模式可用于定位难处理的几何；当前结果不证明所有场景都满足 5% 或严格不漏光。
+Finite angular moment maps, irradiance interpolation, surface offsets, and soft weights introduce approximation errors.
+Chebyshev is an upper bound; normalization fallback can still leak when all candidate probes are occluded.
+Ray mode remains available for diagnosing difficult geometry. These results do not prove a 5% bound or strict absence of leakage in all scenes.

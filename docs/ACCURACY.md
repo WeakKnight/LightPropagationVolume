@@ -1,35 +1,35 @@
-# 误差定位与 5% 验收
+# Error diagnosis and the 5% acceptance gate
 
-> 当前默认已修正为 RT 引导的紧凑 SH9 光场；本页保留此前核的历史记录，最新分析与低误差验收见 [SH_RADIANCE.md](SH_RADIANCE.md)。
+> The current default has been corrected to an RT-guided compact SH9 field. This page preserves the earlier kernel's history; see [SH_RADIANCE.md](SH_RADIANCE.md) for the latest analysis and low-error acceptance results.
 
-> 当前默认已升级为 GV + 26 邻域 + 时间 refinement；本页为此前核/预设的记录，最新评估见 [SH_REFINEMENT.md](SH_REFINEMENT.md)。
+> The default was subsequently upgraded to GV + 26 neighbors + temporal refinement. This page records the preceding kernel / preset; see [SH_REFINEMENT.md](SH_REFINEMENT.md) for that evaluation.
 
-> 2026-10-05 更新：本文的达标数值和方向图消费描述属于 `--transport directional`。当前默认为紧凑 SH LPV，其内存、性能和明显的画质退步见 [COMPACT_LPV.md](COMPACT_LPV.md)。方向模式的累计角度缓存现已按需分配。
+> 2026-10-05 update: the passing results and directional-map consumption described here apply to `--transport directional`. The default at that stage became compact SH LPV; see [COMPACT_LPV.md](COMPACT_LPV.md) for its memory, performance, and substantial quality regression. The accumulated angular cache in directional mode is now allocated on demand.
 
-2026-10-04，Metal / 本地 SlangPy 0.43.0。数值比较使用未曝光线性 RGB，固定场景、相机、光源与三次间接材质反射深度。
+2026-10-04, Metal / local SlangPy 0.43.0. Numerical comparisons use unexposed linear RGB with a fixed scene, camera, lighting, and depth of three indirect material reflections.
 
-## 固定口径
+## Fixed metric
 
-沿用此前报告的指标：
+The metric from earlier reports is retained:
 
 \[
 \mathrm{NRMSE}=\frac{\sqrt{\operatorname{mean}((L_{\mathrm{LPV}}-L_{\mathrm{RT}})^2)}}
  {\operatorname{mean}(L_{\mathrm{RT}})}.
 \]
 
-对完整 RGB 图像计算，包括背景；不裁剪、不改变曝光、不重新拟合间接光强度。
-这指总光照的归一化 RMSE，不是“每个像素误差 ≤5%”，也不是单独间接光的相对误差。
-独立 RT reference 直接追踪材质路径，没有读取 LPV 场。两个算法均含三个间接表面命中，且使用相同材料、几何与相机。
+It is evaluated over the complete RGB image, including the background, without cropping, exposure changes, or refitting indirect-light intensity.
+This is normalized RMSE of total lighting, not a guarantee of at most 5% error in each pixel or relative error of indirect lighting alone.
+The independent RT reference traces material paths directly without reading the LPV field. Both algorithms include three indirect surface hits and use identical materials, geometry, and cameras.
 
-`./run_local.sh --accuracy --transport directional --extra-cases` 可重现本文方向模式的默认视角、侧视角及换太阳方向三项验收，任何一项超过 5% 会返回非零。
-LPV 为 2048 spp，RT 为 16384 spp。它们只用来收敛像素内采样；体积光场没有按 reference 图像拟合。
-报告另外估计 reference 的采样噪声：比较完整平均与前半样本平均，相当于用两个独立半段样本的差估计完整平均的方差。
+`./run_local.sh --accuracy --transport directional --extra-cases` reproduces the directional-mode default view, side view, and changed-sun acceptance cases. Any result above 5% returns nonzero.
+LPV uses 2048 spp and RT 16384 spp. These converge pixel sampling only; the volume field is not fitted to the reference image.
+The report also estimates reference sampling noise by comparing the complete average with the first-half average, equivalent to estimating the full-average variance from the difference between two independent half-sample sets.
 
-## 为什么原实现很难靠参数修正
+## Why parameter tuning could not fix the original implementation
 
-在 160×120、1024 spp 的初筛中，原 SH9 传播核有以下结果：
+An initial 160×120, 1024 spp screening of the original SH9 propagation kernel produced:
 
-| grid / 空间步 / decay | NRMSE |
+| Grid / spatial steps / decay | NRMSE |
 | --- | ---: |
 | 8³ / 24 / 0.95 | 19.93% |
 | 16³ / 24 / 0.95 | 29.92% |
@@ -39,48 +39,48 @@ LPV 为 2048 spp，RT 为 16384 spp。它们只用来收敛像素内采样；体
 | 32³ / 32 / 1.0 | 95.70% |
 | 64³ / 32 / 1.0 | 40.60% |
 
-这些不是不同算法的最终高质量验收，而是定位参数不能解决的系统误差。
-增大 grid 会缩短传播距离；每步固定 decay 还会改变同一世界距离的衰减。
-原实现同时在直接照明区域偏亮、阴影区域偏暗，无法用一个全局强度修正。
+These are diagnostic results for systematic error that parameter tuning cannot resolve, not final high-quality acceptance runs of different algorithms.
+A finer grid shortens propagation range; fixed per-step decay also changes attenuation over the same world-space distance.
+The original implementation was simultaneously too bright in directly lit areas and too dark in shadow, so one global intensity adjustment could not correct it.
 
-更直接的检查是在没有几何、空间完全均匀的角度光场中，计算传播核的 SH 线性变换。
-在不会触发负值截断的微小方向扰动下，原核的角度模态增益为：
+A more direct check computes the kernel's SH linear transform in a spatially uniform angular field without geometry.
+For small directional perturbations that do not trigger negative-value clamping, the original kernel's angular-mode gains are:
 
-| 模态 | 单步增益 |
+| Mode | Per-step gain |
 | --- | ---: |
 | L0 | 1 |
-| 三个 L1 分量 | 0.36864318 |
-| 五个 L2 分量 | 0、0、0.01847926、0、0.01847926 |
+| Three L1 components | 0.36864318 |
+| Five L2 components | 0, 0, 0.01847926, 0, 0.01847926 |
 
-这里使用代码中的主/侧面立体角，其值也见 [Kirsch 的 LPV 注释](https://data.blog.blackhc.net/2010/07/lpv-annotations.pdf)。
-上述矩阵是对本项目核的计算结果。空间均匀、方向不均匀的辐射亮度，在真空自由传播中应保持不变；
-原核每走一个空气格子便重投影为余弦瓣，显著损失方向信息。SH 负值截断、重复空间扩散、粗几何覆盖和无可见性过滤的插值又增加偏差。
-它是传统 LPV 的强近似，不能因为每色采用九个 SH 系数就认为方向传播准确。
+These use the main/side-face solid angles in the code, also listed in [Kirsch's LPV annotations](https://data.blog.blackhc.net/2010/07/lpv-annotations.pdf).
+The matrix above was computed for this project's kernel. Spatially uniform but directionally nonuniform radiance should remain unchanged under free transport in vacuum.
+The original kernel reprojects a cosine lobe at every air cell, substantially losing directional information. Negative SH clamping, repeated spatial diffusion, coarse geometry coverage, and interpolation without visibility filtering add further bias.
+It is a strong traditional-LPV approximation; using nine SH coefficients per color does not imply accurate directional propagation.
 
-## 达标路径：保留方向的体积传播
+## Passing path: direction-preserving volume transport
 
-默认采用方向离散的 LPV 扩展，保留经典 SH 核供对照。这是明确的角度表示与传播算子变更。
-最终着色也从角度样本做余弦积分；SH9 仅用于切片与场导出，没有继续将其作为高精度消费数据。
+At this stage, the default became a directionally discretized LPV extension, retaining the classic SH kernel for comparison. This explicitly changes the angular representation and propagation operator.
+Final shading also cosine-integrates angular samples. SH9 is used only for slices and field export, not as the high-accuracy consumption representation.
 
-1. 用固定的整数方向格构成对称的角度集合，缓存每个 cell 到上游 cell 的 RT 段查询。
-   命中时缓存表面法线、距离、材质索引；出界为空。权重是方向格的球面 Voronoi 立体角，与场景和参考图无关。
-2. 第一阶使用从探针出发的完整 RT 射线，在真实表面计算 `Le + rho*E_direct/pi`，
-   对每个方向 bin 内 8 个子样本平均，直接求得完整首阶场；后续阶的局部边界为 `rho*E_previous/pi`。
-   Lambertian 的出射 radiance 本身没有额外 `cos(outgoing)`；覆盖与角度积分承担几何项。
-3. 没有命中的空气格子只从同一方向的上游格子拷贝 radiance，保持方向，不再生成余弦瓣。
-   没有体介质时默认 decay=1。辐射亮度沿射线不因距离衰减；远处表面覆盖的立体角缩小自然体现几何衰减。
-4. 每个材质阶数独立求解完整空间场，最后只累加各阶一次。空间迭代是边界条件的传播求解，不累加各轮稳态估计。
-5. 最终消费和表面反射查询使用可见性过滤的八邻域插值，拒绝穿墙的或落在实体背面的 cell，再归一化剩余权重。
-   角度余弦积分归一化到 π，使任意法线上的均匀 radiance 得到 `E=pi*L`。
+1. A fixed integer direction lattice defines a symmetric angular set. Cache RT segment queries from each cell to its upstream cell.
+   Hits cache surface normal, distance, and material index; out-of-bounds values are empty. Weights are spherical Voronoi solid angles of the direction lattice, independent of the scene and reference images.
+2. The first order uses full RT rays from probes to evaluate `Le + rho*E_direct/pi` at actual surfaces.
+   Averaging 8 subsamples per direction bin directly solves the complete first-order field. Later orders use local boundary conditions `rho*E_previous/pi`.
+   Lambertian outgoing radiance has no extra `cos(outgoing)` factor; coverage and angular integration account for geometry.
+3. Air cells without hits copy radiance only from the upstream cell in the same direction, preserving direction rather than creating new cosine lobes.
+   Without a participating medium, decay defaults to 1. Radiance does not attenuate with distance along a ray; shrinking solid-angle coverage of distant surfaces naturally accounts for geometric falloff.
+4. Solve a complete spatial field independently for each material order, then sum each order exactly once. Spatial iterations solve boundary-condition propagation; they do not accumulate successive steady-state estimates.
+5. Final consumption and surface-reflection queries use visibility-filtered eight-neighbor interpolation, rejecting cells across walls or behind solid surfaces and renormalizing the remaining weights.
+   Angular cosine integration is normalized to π, giving `E=pi*L` for uniform radiance at any normal.
 
-该路径仍是静态网格、注入、传播、材质反射与体积消费。相机光线只有可见性/直接光查询，未在 LPV 模式中追踪随机多次反射路径。
-RT reference 使用另外的逐像素路径积分实现，因此质量比较没有共用其间接光结果。
+The path still uses a static grid, injection, propagation, material reflection, and volume consumption. Camera rays perform only visibility / direct-light queries; LPV mode does not trace random multi-reflection paths.
+The RT reference uses a separate per-pixel path integrator, so quality comparisons do not share its indirect-light results.
 
-默认为 32³、1154 个方向、首阶之后每材质阶数 40 个空间步、三个材质阶数。方向格的整数 extent 为 5。
-`--angular-resolution 1..5` 对应 26 / 98 / 290 / 578 / 1154 个方向；降低它可以直接观察方向离散造成的条带。
-`--steps` 至少应覆盖 grid 中最慢方向的自由传播，默认 40 覆盖 32³；提高 grid 时建议同时设为 `grid+2` 或更多。
-角度表示有明显内存代价：32³ / 1154 方向的主要角度缓存约 3.8 GB（不含运行库/图像）。
-经典 SH 模式仍可用较小内存运行：
+Defaults are 32³, 1154 directions, 40 spatial steps per material order after the first order, and three material orders. The integer direction-lattice extent is 5.
+`--angular-resolution 1..5` selects 26 / 98 / 290 / 578 / 1154 directions. Reducing it exposes bands caused by angular discretization.
+`--steps` should at least cover free propagation in the grid's slowest direction. The default 40 covers 32³; when increasing the grid, use `grid+2` or more.
+Angular representation has a substantial memory cost: the main angular cache at 32³ / 1154 directions occupies about 3.8 GB, excluding runtime / images.
+Classic SH mode remains available with less memory:
 
 ```bash
 ./run_local.sh --transport sh --grid 16 --steps 24 --decay .95 --read-bias .25
@@ -88,55 +88,53 @@ RT reference 使用另外的逐像素路径积分实现，因此质量比较没�
 ./run_local.sh --accuracy --transport directional --extra-cases
 ```
 
-## 验证
+## Validation
 
-24 项 CPU/GPU 检查覆盖旧路径和新路径。新增检查确认：
+24 CPU/GPU checks cover the old and new paths. New checks confirm:
 
-- 角度权重为正，和为 4π，方向单位化且具有反向对称性。
-- 空气中空间均匀的非均匀角度分布逐方向保持不变。
-- 单个漫反射平面不产生错误的自照明或自反弹。
-- 合成封闭辐射边界得到 `1+rho+rho²`，增大空间求解轮数不会重复累积历史。
-- 相机、材质反射深度改变复用几何/直接光缓存；切回另一传播模式后结果确定；关灯无残留。
+- Angular weights are positive and sum to 4π; directions are unit length and antipodally symmetric.
+- A spatially uniform but angularly nonuniform field is preserved direction by direction in air.
+- A single diffuse plane produces no false self-lighting or self-bounce.
+- Synthetic closed radiance boundaries yield `1+rho+rho²`; more spatial iterations do not repeatedly accumulate history.
+- Camera and material-reflection-depth changes reuse geometry / direct-light caches; switching transport modes back gives deterministic results; lights off leaves no residual.
 
-高质量数值结果与图像由 `scripts/validate_accuracy.py` 生成，见本目录 `accuracy-report.json` 和 `accuracy-comparison.png`；旧报告另存为 `accuracy-report-before-footprints.json`。
-有限角度、空间插值、薄几何、平滑法线与有限材质深度仍有误差。三个案例的 5% 验收不证明任意场景或无限反射下的同一误差界。
+High-quality numerical results and images are generated by `scripts/validate_accuracy.py`; see `accuracy-report.json` and `accuracy-comparison.png` in this directory. The old report is retained as `accuracy-report-before-footprints.json`.
+Finite angular resolution, spatial interpolation, thin geometry, smooth normals, and finite material depth still introduce errors. Passing these three cases does not prove the same 5% bound for arbitrary scenes or infinite reflections.
 
-## 角度范围采样之前的结果
+## Results before angular-footprint sampling
 
-| 案例 | NRMSE | RT 噪声估计 |
+| Case | NRMSE | RT noise estimate |
 | --- | ---: | ---: |
-| 默认相机 / 太阳 | 2.76% | 0.56% |
-| 侧视角 | 3.86% | 0.72% |
-| 太阳改为 azimuth=-35° / elevation=40° | 2.35% | 0.48% |
+| Default camera / sun | 2.76% | 0.56% |
+| Side view | 3.86% | 0.72% |
+| Sun at azimuth=-35° / elevation=40° | 2.35% | 0.48% |
 
-原 SH 默认配置为 30.03%。三个新案例使用同一组传播参数，曝光与间接强度没有参与拟合。
-之前的 578 方向版本在同样高采样口径下为 3.54% / 5.06% / 2.91%，因此进一步统一细化到 1154 方向。
-提高像素采样仅降低参考/抗锯齿噪声；角度细化确实降低了剩余离散误差。
+The original default SH configuration gives 30.03%. All three new cases use the same propagation settings; exposure and indirect intensity are not fitted.
+The earlier 578-direction version gave 3.54% / 5.06% / 2.91% under the same high-sample metric, motivating a uniform increase to 1154 directions.
+More pixel samples reduce only reference / antialiasing noise; angular refinement genuinely reduces the remaining discretization error.
 
 ![Classic SH / directional LPV / independent RT](accuracy-comparison.png)
 
+## After the wall-patch fix, before distance moments
 
-## 墙面暗斑修复后、距离矩替换前
+First-order radiance is solved directly with full probe RT and 8 angular-footprint subsamples. Later material orders still use direction-preserving grid propagation.
+`--steps` now constrains only directional propagation after the first order. Final interpolation, exposure, grid, direction count, material depth, read bias, and indirect intensity remain unchanged.
+This removes some brightness discontinuities from fixed directional coverage. See [WALL_ARTIFACTS.md](WALL_ARTIFACTS.md) for the decomposition, costs, and wall-specific metrics.
 
-首阶 radiance 改由探针完整 RT 加 8 个角度范围子样本直接求解，后续材质阶数仍使用方向保持的网格传播。
-`--steps` 现在只约束首阶之后的方向传播。最终插值、曝光、grid、方向数、材质深度、read bias 和间接强度保持同一配置。
-这一步消除了一部分固定方向覆盖的明暗跳变；详细分解、代价与墙面专用指标见 [WALL_ARTIFACTS.md](WALL_ARTIFACTS.md)。
-
-| 案例 | 当前 NRMSE | RT 噪声估计 |
+| Case | NRMSE at this stage | RT noise estimate |
 | --- | ---: | ---: |
-| 默认相机 / 太阳 | 1.79% | 0.56% |
-| 侧视角 | 2.30% | 0.72% |
-| 换太阳方向 | 1.73% | 0.48% |
+| Default camera / sun | 1.79% | 0.56% |
+| Side view | 2.30% | 0.72% |
+| Changed sun direction | 1.73% | 0.48% |
 
-这一阶段机器报告另存为 [accuracy-report-before-moments.json](accuracy-report-before-moments.json)，三案例图为 [accuracy-cases-before-moments.png](accuracy-cases-before-moments.png)。
-旧的报告/比较图以 `-before-footprints` 后缀保留。24 项 CPU/GPU 检查通过。
+The machine-readable report for this stage is retained as [accuracy-report-before-moments.json](accuracy-report-before-moments.json), and the three-case image as [accuracy-cases-before-moments.png](accuracy-cases-before-moments.png).
+Earlier reports / comparisons retain the `-before-footprints` suffix. All 24 CPU/GPU checks pass.
 
+## Default at this stage: distance-moment visibility and cached irradiance
 
-## 当前默认：距离矩可见性与缓存 irradiance
-
-2026-10-05，最终消费和次级反射改为距离矩/Chebyshev 权重，加预先余弦积分的 irradiance 方向图。
-方向输运和 8 样本首段不变。固定三个案例的 NRMSE 为 **2.54% / 3.30% / 2.15%**，全部低于 5%。
-这比精确 ray 消费的 **1.79% / 2.30% / 1.73%** 多一些近似误差，但固定墙面低频起伏基本保持。
-稳定消费耗时从 9.06 ms 降为 0.62 ms，包含次级反射与传播的更新从 2.37 s 降为 1.46 s。
-性能、薄墙测试、查询偏移与新增约 0.53 GB 缓存见 [PROBE_VISIBILITY.md](PROBE_VISIBILITY.md)。
-29 项 CPU/GPU 检查及窗口三帧呈现通过。当前报告为 [accuracy-report.json](accuracy-report.json)。
+2026-10-05: final consumption and secondary reflections switch to distance-moment / Chebyshev weights plus precomputed cosine-integrated irradiance direction maps.
+Directional transport and the 8-sample first flight remain unchanged. NRMSE for the three fixed cases is **2.54% / 3.30% / 2.15%**, all below 5%.
+This adds approximation error relative to exact-ray consumption at **1.79% / 2.30% / 1.73%**, while largely retaining the fixed walls' low-frequency smoothness.
+Steady consumption drops from 9.06 ms to 0.62 ms; updates including secondary reflections and propagation drop from 2.37 s to 1.46 s.
+See [PROBE_VISIBILITY.md](PROBE_VISIBILITY.md) for performance, thin-wall tests, query offsets, and approximately 0.53 GB of additional caches.
+29 CPU/GPU checks and three-frame window presentation pass. The report is [accuracy-report.json](accuracy-report.json).

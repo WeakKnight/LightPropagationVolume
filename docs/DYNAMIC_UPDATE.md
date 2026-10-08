@@ -1,67 +1,67 @@
-# 有预算的 SH 光场动态更新
+# Budgeted dynamic SH field updates
 
-2026-10-06，Metal / SlangPy，32³ / 1024 rays per probe / 三阶材质反射。
+2026-10-06, Metal / SlangPy, 32³ / 1024 rays per probe / three material-reflection orders.
 
-本轮改变 RT 捕获调度，不改变已验证的辐射投影、实际表面反射或 GV/26 邻域预测公式。默认每帧最多处理 **4096 个探针-材质阶数任务**，代替光源变化时一帧重建完整三阶目标场。
+This iteration changes RT capture scheduling without changing the validated radiance projection, actual surface reflections, or GV/26-neighbor prediction equations. The default processes at most **4096 probe-material-order tasks per frame**, replacing a full three-order target rebuild in one frame whenever lighting changes.
 
-## 调度
+## Scheduling
 
-1. 开始捕获周期时冻结当前光照参数。每帧使用固定探针预算，直接写入原来的 captured 缓冲，不保存逐方向光线数据。
-2. 完成一个材质阶数的所有探针后，运行该阶的 GV/26 邻域预测，将完整阶数发布为新的目标。下一阶读取这个完成的上一阶目标。
-3. 显示光场每帧向当前已发布目标做历史融合；尚未完成的高阶保留旧周期结果。初次运行时未完成的场为零。steps=0 时目标就是 captured，允许按探针直接发布。
-4. 灯光持续变化不打断当前周期。完成后捕获最新灯光，期间中间状态合并掉，避免频繁重启导致一直算不完。几何、分辨率或输运参数变化则取消旧任务并重新初始化。
-5. 捕获未完成或最新光照尚未处理时，禁止宣布收敛；周期完成后才检测历史残差。相机移动不重启光场捕获。
+1. Freeze the current lighting parameters when a capture cycle starts. Each frame uses a fixed probe budget and writes directly to the existing captured buffer; no per-direction ray data is stored.
+2. Once all probes of a material order are captured, run that order's GV/26-neighbor prediction and publish the complete order as a new target. The next order reads this completed previous-order target.
+3. Each frame blends the displayed field toward the currently published target. Unfinished higher orders retain the previous cycle's results. On first use, unfinished fields are zero. With steps=0, captured is the target, allowing publication per probe.
+4. Continuous lighting changes do not interrupt the current cycle. When it finishes, capture the latest lighting, coalescing intermediate states to avoid endless restarts. Geometry, resolution, or transport-parameter changes cancel old work and reinitialize instead.
+5. Convergence cannot be declared while capture is unfinished or the latest lighting remains unprocessed. History residuals are checked only after a cycle completes. Camera movement does not restart field capture.
 
-预算跨材质阶数共享。例如默认 32³×3 / 4096 = 24 帧；第一阶在第 8 帧发布。预算设为 0 保留完整重建路径作精度和性能对照。
+The budget is shared across material orders. For example, the default takes 32³×3 / 4096 = 24 frames; the first order is published on frame 8. A budget of 0 retains the full-rebuild path for accuracy and performance comparison.
 
-这轮采用**分帧、逐阶捕获**。没有改成上一帧总光场的无限阶反馈，也没有旋转随机方向、每帧减少最终角度样本或按光照影响区域排序；仍使用同一套 1024 方向积分，因此可以严格验证目标场不随预算变化。
+This iteration uses **capture spread across frames and material orders**. It does not introduce infinite-order feedback from the previous frame's total field, rotating random directions, fewer final angular samples per frame, or prioritization by lighting influence. It retains the same 1024-direction integration, allowing strict validation that the target field is independent of the budget.
 
-## 同轮性能与响应
+## Same-run performance and response
 
-计时为 CPU wall clock + device.wait，640×480 / 1 spp，包含光场更新、渲染、累积、tone mapping，不含窗口/UI/呈现。场景、GV、距离矩及渲染管线预热后，太阳强度从 2.4 跳到 3.0。以下是捕获活跃帧的统计，不能理解为纯 kernel GPU 时间。
+Timings use CPU wall clock + device.wait at 640×480 / 1 spp, including field updates, rendering, accumulation, and tone mapping, but excluding the window/UI/presentation. After warming the scene, GV, distance moments, and rendering pipelines, sun intensity jumps from 2.4 to 3.0. Statistics below cover active capture frames; they are not pure GPU kernel timings.
 
-| 每帧探针预算 | 捕获完成帧数 | 捕获帧中位数 | P95 | 最大值 | 完成 90% 光场变化的帧数 |
+| Probe budget per frame | Frames to complete capture | Median capture frame | P95 | Maximum | Frames to complete 90% of the field change |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| 0（整场） | 1 | 110.84 ms | 110.84 ms | 110.84 ms | 24 |
+| 0 (full field) | 1 | 110.84 ms | 110.84 ms | 110.84 ms | 24 |
 | 1024 | 96 | 10.44 ms | 11.61 ms | 11.79 ms | 72 |
 | 2048 | 48 | 10.63 ms | 11.74 ms | 11.85 ms | 44 |
-| **4096（默认）** | **24** | **10.89 ms** | **11.88 ms** | **11.94 ms** | **32** |
+| **4096 (default)** | **24** | **10.89 ms** | **11.88 ms** | **11.94 ms** | **32** |
 
-整场对照另外重复 5 次，中位数 111.17 ms、最大 111.79 ms。4096 比 2048 几乎不增加此机的峰值，但显著缩短响应，因此选择为默认值。不同预算的每帧成本不线性下降，不能按探针比例预测毫秒数。
+Five additional full-field runs have a median of 111.17 ms and a maximum of 111.79 ms. On this machine, 4096 barely increases the peak over 2048 while substantially shortening response time, so it is the default. Per-frame cost does not decrease linearly with the budget; milliseconds cannot be predicted from the probe-count ratio.
 
-90% 响应用材质阶数 SH 系数的 L2 差衡量，相对于旧稳态到新目标的总变化归一化，每 4 帧测一次；它不是画面相对 RT 的误差。按 60 FPS 换算，24 帧为 0.40 秒，32 帧为约 0.53 秒。这是按帧数换算，不是实际锁帧测量。默认测试在第 152 帧确认严格稳态。
+The 90% response uses the L2 difference of material-order SH coefficients, normalized by the total change from the old steady state to the new target, sampled every 4 frames. It is not image error relative to RT. At 60 FPS, 24 frames correspond to 0.40 seconds and 32 frames to about 0.53 seconds. These are frame-count conversions, not measurements with a frame-rate cap. The default test confirms strict steady state on frame 152.
 
-连续 96 帧改变灯光时，完成 4 个周期，中位数 10.90 ms、P95 11.90 ms、最大 12.05 ms。停止变化后能追上最新灯光，其最终目标与完整重建逐值一致。
+With lighting changing continuously for 96 frames, 4 cycles complete, with a median of 10.90 ms, P95 of 11.90 ms, and maximum of 12.05 ms. Once changes stop, the field catches up to the latest lighting, and its final target is bit-identical to a full rebuild.
 
-**分帧降低的是峰值，不保证减少总工作量。** 当前仍有光照延迟、阶数间暂时来自不同周期、首次准备和结构变更的同步开销。4096 是任务数量预算，不是硬性毫秒上限；每个任务的射线数由 probe-rays 决定，整阶预测也未进一步分帧。现有应用没有新增动态几何/动画支持。
+**Budgeting reduces peaks, not necessarily total work.** Lighting latency, temporary mixing of orders from different cycles, and synchronous initialization / structural-change costs remain. The 4096 budget counts tasks; it is not a hard millisecond limit. Rays per task are controlled by probe-rays, and whole-order prediction is not further split across frames. Dynamic geometry / animation support has not been added.
 
-原始计时与响应样本：[sh-dynamic-benchmark.json](sh-dynamic-benchmark.json)。
+Raw timing and response samples: [sh-dynamic-benchmark.json](sh-dynamic-benchmark.json).
 
-## 精度、内存与验证
+## Accuracy, memory, and validation
 
-默认 4096 预算，原有完整 640×480 线性 RGB 口径，LPV 2048 spp / RT 16384 spp，未裁剪、未拟合曝光或亮度：
+Default 4096 budget, the original full 640×480 linear-RGB metric, LPV 2048 spp / RT 16384 spp, without cropping or exposure / brightness fitting:
 
-| 案例 | NRMSE |
+| Case | NRMSE |
 | --- | ---: |
-| 默认视角 | 2.64054% |
-| 侧视角 | 3.41705% |
-| 换太阳方向 | 2.25872% |
+| Default view | 2.64054% |
+| Side view | 3.41705% |
+| Changed sun direction | 2.25872% |
 
-三组仍通过 5% 门槛，RT reference 复用同一份缓存。不同预算的完成目标场逐值相等；显示历史在残差阈值停止，最终图像允许停止时刻不同产生的微小数值差。报告：[sh-budgeted-accuracy.json](sh-budgeted-accuracy.json)。
+All three cases still pass the 5% gate and reuse the same RT reference cache. Completed target fields are bit-identical across budgets. Display history stops at a residual threshold, so different stopping times can produce tiny numerical image differences. Report: [sh-budgeted-accuracy.json](sh-budgeted-accuracy.json).
 
-GI buffer payload 仍为 213,571,368 字节（213.57 MB），没有新增方向缓存或目标场副本。
+GI buffer payload remains 213,571,368 bytes (213.57 MB), without additional directional caches or target-field copies.
 
-48 项 CPU/Metal debug GPU 检查全部通过。新增验证覆盖：非整除预算的尾批次；steps 为 0/2/3 时完整目标场一致；未完成捕获不得提前收敛；连续光照变化不饿死任务；关灯后追上零场；中途改变反射阶数/传播参数后取消旧任务。原有能量、遮挡、SH 和缓存测试继续保留。
+All 48 CPU/Metal debug GPU checks pass. New coverage includes non-divisible tail batches; identical complete target fields with steps=0/2/3; no premature convergence during capture; progress under continuous lighting changes; convergence to a zero field after lights are turned off; and cancellation of old work when reflection depth / propagation settings change mid-capture. Existing energy, occlusion, SH, and cache tests remain.
 
-## 使用
+## Usage
 
 ```bash
-./run_local.sh                           # 默认 4096 probes/frame
-./run_local.sh --probes-per-frame 2048  # 更小任务预算
-./run_local.sh --probes-per-frame 0     # 完整重建对照
+./run_local.sh                           # Default: 4096 probes/frame
+./run_local.sh --probes-per-frame 2048  # Smaller task budget
+./run_local.sh --probes-per-frame 0     # Full-rebuild comparison
 ./run_local.sh --benchmark-dynamic
 ./run_local.sh --accuracy --extra-cases --reference-cache sample/output/accuracy-moments --output sample/output/accuracy-sh-budgeted
 ./run_local.sh --test --debug
 ```
 
-窗口提供 RT probes/frame 滑条和捕获阶数/探针进度。批量渲染仍先 settle_volume，再开始像素采样，不把未完成更新的帧混进稳态精度报告。
+The window provides an RT probes/frame slider and capture-order / probe progress. Batch rendering still calls settle_volume before pixel sampling, so unfinished updates do not enter steady-state accuracy reports.
