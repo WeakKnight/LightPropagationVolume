@@ -52,7 +52,7 @@ The flux proxy and field share cell-area normalization; physical flux additional
 Transmission multiplies by `v_i`; added reflection is `phi_i * A_i`, channel by channel.
 For complete hits with identical normals and albedo, integrated reflected flux is exactly `rho * phi_i`, because a cosine lobe integrates to π.
 No extra secondary-bounce intensity adjustment is applied; black materials naturally absorb light.
-Averaged hit normals / materials, five-ray coverage, and five-ray angular integration remain approximations.
+Averaged hit normals / materials, five-ray coverage, and five-face angular integration remain approximations.
 
 ## Avoiding repeated injection
 
